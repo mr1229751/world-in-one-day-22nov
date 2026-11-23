@@ -8,9 +8,19 @@
 //
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { copyFileSync, mkdirSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
+
+const src = new URL('./entry.png', import.meta.url);
+const head = readFileSync(src).subarray(0, 8);
+const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+if (!PNG_SIGNATURE.every((b, i) => head[i] === b)) {
+  throw new Error('entry.png is missing or is not a PNG file');
+}
 
 const outDir = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 mkdirSync(outDir, { recursive: true });
-copyFileSync(new URL('./entry.png', import.meta.url), join(outDir, 'entry.png'));
+// Write to a temporary name, then rename, so a reader never sees a partial file.
+const tmp = join(outDir, 'entry.png.tmp');
+copyFileSync(src, tmp);
+renameSync(tmp, join(outDir, 'entry.png'));
